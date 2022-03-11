@@ -1,7 +1,7 @@
 import json
 import requests
 
-url = 'https://home-credit-back.herokuapp.com/'
+url = 'https://home-credit-back.herokuapp.com/'  # url = 'http://127.0.0.1:5000/'
 client_id_list_path = 'client_id_list'
 prediction_path = 'predict'
 client_data_path = 'client_data'
@@ -12,9 +12,10 @@ dummy_path = 'dummy'
 
 
 def get_list_client_ids(active_filters):
-    return json.loads(requests.get(url=url + client_id_list_path,
-                                            headers={"Content-Type": "application/json"},
-                                            data=json.dumps(active_filters)).json())
+    response = json.loads(requests.get(url=url + client_id_list_path,
+                                       headers={"Content-Type": "application/json"},
+                                       data=json.dumps(active_filters)).json())
+    return response['client_ids'], response['target']
 
 
 def get_prediction_client(client_id):
@@ -23,8 +24,8 @@ def get_prediction_client(client_id):
 
 
 def get_client_data(client_id):
-    response = json.loads(requests.get(url=url + client_data_path + '?client_id=' + str(int(client_id))).content)
-    return response['STATUS'] == 'success', json.loads(response['data'])
+    response = json.loads(requests.get(url=url + client_data_path + '?client_id=' + str(int(client_id))).json())
+    return response['STATUS'] == 'success', response['data']
 
 
 def get_possible_values(feature):

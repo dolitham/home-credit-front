@@ -9,14 +9,13 @@ import seaborn as sns
 
 # %% Init
 
-st.set_page_config(page_title='Prêt à dépenser', page_icon=":bank:", layout='wide', initial_sidebar_state = 'auto')
+st.set_page_config(page_title='Prêt à dépenser', page_icon=":bank:", layout='wide', initial_sidebar_state='auto')
 
 all_features = get_features_list()
 
-textbox = st.empty()  # TODO delete this
-
 # %% Sidebar filtering
 
+st.sidebar.header('Filters')
 selected_features = st.sidebar.multiselect(label='Filter by :', options=all_features)
 
 filters = dict()
@@ -33,40 +32,51 @@ for feature in selected_features:
         if set(filters[feature]) not in [set(feature_values), set()]:
             active_filters[feature] = (feature_type, filters[feature])
 
-textbox.info(active_filters)
+# %% Main page content
 
-# %% Content
-
-list_client_ids = get_list_client_ids(active_filters)
+list_client_ids, targets = get_list_client_ids(active_filters)
 
 nb_available_clients = len(list_client_ids)
 if nb_available_clients >= 1:
-    st.write(nb_available_clients, 'client' + ('s'*(nb_available_clients>1)) + ' matching filters found')
-    index_client = st.select_slider(options=[None] + list_client_ids, label='Select a client')
+    client_selector_container, proportion_display_container = st.columns([6, 1])
+
+    # Client Selector
+    client_selector_container.subheader('Select a client')
+    client_selector_label = str('{:,}'.format(nb_available_clients)) + ' clients matching filters'
+    client_selector_container.caption(client_selector_label)
+    index_client = client_selector_container.select_slider(options=[None] + list_client_ids, label='')
     valid_client_data = False
+
+    # Current Filters Proportion display
+    proportion_display_container.caption('Clients matching filters')
+    fig_targets = plt.figure(figsize=(3, 3))
+    plt.pie(targets.values(), labels=targets.keys(), autopct='%.0f%%')
+    proportion_display_container.pyplot(fig_targets, height=20)
 
     if index_client is not None:
         valid_prediction, value_prediction = get_prediction_client(int(index_client))
         if valid_prediction:
-            st.write('Bankrupcy prediction : ', '{:.2f}%'.format(100*(value_prediction)))
+            client_selector_container.markdown('Bankrupcy prediction : ' + '{:.2f}%'.format(100 * value_prediction))
         else:
-            st.write('could not predict')
+            client_selector_container.caption('could not predict')
 
         valid_client_data, client_data = get_client_data(index_client)
 
+    # Displayed features Selector
     buttons = dict()
-
+    st.sidebar.header('Features to display')
     for i, feature in enumerate(all_features[:5]):
         buttons[feature] = st.sidebar.checkbox(feature, disabled=(feature in active_filters.keys()))
 
     features_chosen = [feature for feature in buttons if buttons[feature]]
     nb_features_chosen = len(features_chosen)
 
+    # Features plot
     if len(features_chosen):
         nb_plot_rows = int(math.ceil(nb_features_chosen / 2))
-        f, ax = plt.subplots(nb_plot_rows, 2)
-        f.set_figheight(5*nb_plot_rows)
-        f.set_figwidth(15)
+        fig_features, ax = plt.subplots(nb_plot_rows, 2)
+        fig_features.set_figheight(5 * nb_plot_rows)
+        fig_features.set_figwidth(15)
 
         for feature_index, feature in enumerate(features_chosen):
             index_col = feature_index % 2
@@ -88,7 +98,7 @@ if nb_available_clients >= 1:
                 # noinspection PyUnboundLocalVariable
                 this_ax.axvline(x=client_data[feature], color="red", ls="--", lw=2.5)
 
-        st.pyplot(f)
+        st.pyplot(fig_features)
 
 else:
     st.write('No client found')
