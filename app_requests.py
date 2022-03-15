@@ -1,14 +1,14 @@
 import json
 import requests
 
-url = 'https://home-credit-back.herokuapp.com/'  # url = 'http://127.0.0.1:5000/'
+url = 'https://home-credit-back.herokuapp.com/'
+# url = 'http://127.0.0.1:5000/'
 client_id_list_path = 'client_id_list'
 prediction_path = 'predict'
 client_data_path = 'client_data'
 feature_path = 'feature'
 feature_data_path = 'feature_data'
 features_list_path = 'features_list'
-dummy_path = 'dummy'
 
 
 def get_list_client_ids(active_filters):
@@ -20,7 +20,7 @@ def get_list_client_ids(active_filters):
 
 def get_prediction_client(client_id):
     response = json.loads(requests.get(url=url + prediction_path + '?client_id=' + str(int(client_id))).content)
-    return response['STATUS'] == 'success', response['prediction']
+    return response['STATUS'] == 'success', response['prediction'], response['explanation']
 
 
 def get_client_data(client_id):

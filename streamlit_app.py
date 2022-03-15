@@ -1,15 +1,17 @@
 import math
-
 import streamlit as st
+import streamlit.components.v1 as components
 from app_requests import *
 import matplotlib.pyplot as plt
 import seaborn as sns
+from colour import Color
 
 #  streamlit run /Users/julie/PycharmProjects/home-credit-front/streamlit_app.py
 
 # %% Init
 
 st.set_page_config(page_title='Prêt à dépenser', page_icon=":bank:", layout='wide', initial_sidebar_state='auto')
+colors = list(Color("green").range_to(Color("red"), 10))
 
 all_features = get_features_list()
 
@@ -54,9 +56,12 @@ if nb_available_clients >= 1:
     proportion_display_container.pyplot(fig_targets, height=20)
 
     if index_client is not None:
-        valid_prediction, value_prediction = get_prediction_client(int(index_client))
+        valid_prediction, value_prediction, explanation_prediction = get_prediction_client(int(index_client))
         if valid_prediction:
-            client_selector_container.markdown('Bankrupcy prediction : ' + '{:.2f}%'.format(100 * value_prediction))
+            prediction_color = colors[int((value_prediction * 10) // 1)]
+            st.markdown('<p style="color:' + str(prediction_color) + '">Bankrupcy prediction : ' + '{:.2f}%</p>'.format(
+                100 * value_prediction), unsafe_allow_html=True)
+            components.html(explanation_prediction, height=700)
         else:
             client_selector_container.caption('could not predict')
 
@@ -65,8 +70,8 @@ if nb_available_clients >= 1:
     # Displayed features Selector
     buttons = dict()
     st.sidebar.header('Features to display')
-    for i, feature in enumerate(all_features[:5]):
-        buttons[feature] = st.sidebar.checkbox(feature, disabled=(feature in active_filters.keys()))
+    for i, feature in enumerate(all_features[:20]):
+        buttons[feature] = st.sidebar.checkbox(feature)
 
     features_chosen = [feature for feature in buttons if buttons[feature]]
     nb_features_chosen = len(features_chosen)
@@ -84,16 +89,20 @@ if nb_available_clients >= 1:
             this_ax = ax[index_col] if nb_plot_rows == 1 else ax[index_row][index_col]
             feature_data = get_feature_data(feature, active_filters)
 
-            if feature_data['feature_type'] == 'float64':
-                sns.kdeplot(x=feature_data['feature'], hue=feature_data['TARGET'], ax=this_ax)
+            if feature_data['feature_type'] == 'float64' and max([u % 1 for u in set(feature_data['feature'])]) == 0:
+                sns.kdeplot(x=feature_data['feature'], hue=feature_data['TARGET'], ax=this_ax, common_norm=False,
+                            bw_adjust=2)
+            elif feature_data['feature_type'] == 'float64':
+                sns.kdeplot(x=feature_data['feature'], hue=feature_data['TARGET'], ax=this_ax, common_norm=False)
             else:
                 sns.histplot(x=feature_data['feature'], hue=feature_data['TARGET'], ax=this_ax,
-                             multiple="dodge", discrete=True, shrink=.8)
+                             multiple="fill", discrete=True, shrink=.8, common_norm=False)
                 if set(feature_data['feature']) == {0, 1}:
                     this_ax.set_xticks([0, 1])
 
             this_ax.set_yticklabels([])
             this_ax.set_title(feature)
+            this_ax.set_ylabel('')
             if valid_client_data:
                 # noinspection PyUnboundLocalVariable
                 this_ax.axvline(x=client_data[feature], color="red", ls="--", lw=2.5)
